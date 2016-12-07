@@ -91,3 +91,5 @@ ENV/
 
 .DS_Store
 .idea
+
+transcripts/snpeff_verbose_output_*.txt

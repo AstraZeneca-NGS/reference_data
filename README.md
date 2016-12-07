@@ -12,3 +12,10 @@ files for hg19 (chr1, chr2, chr3... style naming) and GRCh37 (1, 2, 3... style n
 - capture_regions/Exome-Agilent_V5_Clinical -- [Agilent SureSelect Clinical Research Exome](http://www.genomics.agilent.com/article.jsp?crumbAction=push&pageId=4600005) 
 - capture_regions/Exome-MedExome -- [Nimblegen SeqCap EZ MedExome](http://sequencing.roche.com/products/nimblegen-seqcap-target-enrichment/seqcap-ez-system/seqcap-ez-medexome.html)
 - capture_regions/Exome-NGv3 -- [Nimblegen SeqCap EZ Exome v3](http://sequencing.roche.com/products/nimblegen-seqcap-target-enrichment/seqcap-ez-system/seqcap-ez-exome-v3.html)
+
+## Transcripts
+
+`transcripts/cancer_transcripts_*_ensembl.txt` contain the lists of canonical (longest) transcript IDs that are used by [SnpEff](http://snpeff.sourceforge.net/) variant prediction tool when it run with the `-canon` flag on (only in Ensembl-based versions of reference databases GRCh37.75 and GRCh38.82 in SnpEff notation). However, not all IDs in the list represent the most cancer-relevant isoforms. `transcripts/canon_cancer_replacement.txt` provides a map of transcripts for replacement with the `-canonList` option:
+```
+java -jar snpEff.jar GRCh37.75 test.vcf -canon -canonList transcripts/canon_cancer_replacement.txt
+```

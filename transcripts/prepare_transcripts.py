@@ -6,34 +6,18 @@ from os.path import join, basename, splitext, isdir, isfile, dirname
 from ngs_utils.file_utils import verify_dir, safe_mkdir, verify_file, splitext_plus, adjust_path
 from ngs_utils.logger import warn, info
 
-REPLACEMENTS = {
-    'FGFR3':    'ENST00000440486',
-    'CDKN2A':   'ENST00000304494',
-    'ESR1':     'ENST00000206249',
-    'MET':      'ENST00000397752',
-    'PPP2R2A':  'ENST00000380737',
-    'RAD54L':   'ENST00000371975',
-    'RAD51D':   'ENST00000345365',
-    'AKT1':     'ENST00000555528',
-    'CD79B':    'ENST00000006750',
-    'CHEK1':    'ENST00000534070',
-    'BRCA1':    'ENST00000357654',
-    'FANCL':    'ENST00000233741',
-    'MYD88':    'ENST00000396334',
-    'CHEK2':    'ENST00000328354',
-    'FGFR1':    'ENST00000447712',
-    'FGFR2':    'ENST00000457416',
-}
+with open(join(dirname(__file__), 'canon_cancer_replacement.txt')) as f:
+    REPLACEMENTS = dict(l.strip().split('\t')[:2] for l in f if l.strip())
 
 """
 Chihua:
     export PATH=/home/vsaveliev/bcbio/anaconda/bin:$PATH && /home/vsaveliev/bcbio_tools/bin/snpEff -Xms750m -Xmx4g \
         -dataDir /home/vsaveliev/bcbio/genomes/Hsapiens/hg38/snpeff
-        -canon GRCh37.75 -d -v 2>&1 | tee snpeff_cancer_verbose_output_grch37.75.txt.txt
+        -canon GRCh37.75 -d -v 2>&1 | tee snpeff_cancer_verbose_output_grch37_75.txt.txt
 
     export PATH=/home/vsaveliev/bcbio/anaconda/bin:$PATH && /home/vsaveliev/bcbio_tools/bin/snpEff -Xms750m -Xmx4g \
         -dataDir /home/vsaveliev/bcbio/genomes/Hsapiens/hg38/snpeff
-        -canon GRCh38.82 -d -v 2>&1 | tee snpeff_cancer_verbose_output_grch38.82.txt.txt
+        -canon GRCh38.82 -d -v 2>&1 | tee snpeff_cancer_verbose_output_grch38_82.txt.txt
 
 Local:
     python repare_transcripts.py
@@ -84,23 +68,37 @@ def get_transcripts_from_snpeff_output(snpeff_output_fname):
     return tx_per_genev_by_gene
 
 info('Getting transcripts for hg19')
-hg19_tx_per_genev_by_gene = get_transcripts_from_snpeff_output(join(base_dir, 'snpeff_cancer_verbose_output_grch37.75.txt'))
+hg19_tx_per_genev_by_gene = get_transcripts_from_snpeff_output(join(base_dir, 'snpeff_verbose_output_grch37_75.txt'))
 hg19_genes = set(hg19_tx_per_genev_by_gene.keys())
 
 info('Getting transcripts for hg38')
-hg38_tx_per_genev_by_gene = get_transcripts_from_snpeff_output(join(base_dir, 'snpeff_cancer_verbose_output_grch38.82.txt'))
+hg38_tx_per_genev_by_gene = get_transcripts_from_snpeff_output(join(base_dir, 'snpeff_verbose_output_grch38_82.txt'))
 hg38_genes = set(hg38_tx_per_genev_by_gene.keys())
 
 info('Genes present only in hg19: ' + str(len(hg19_genes - hg38_genes)))
 info('Genes present only in hg38: ' + str(len(hg38_genes - hg19_genes)))
 
-canon_tx_hg19_fpath = join(base_dir, 'cancer_transcripts_hg19.txt')
-canon_tx_hg38_fpath = join(base_dir, 'cancer_transcripts_hg38.txt')
+canon_tx_hg19_fpath = join(base_dir, 'canon_transcripts_hg19_ensembl.txt')
+canon_tx_hg38_fpath = join(base_dir, 'canon_transcripts_hg38_ensembl.txt')
+with open(canon_tx_hg19_fpath, 'w') as hg19, \
+     open(canon_tx_hg38_fpath, 'w') as hg38:
+    for g in hg38_genes:
+        hg19_trs_by_gv = hg19_tx_per_genev_by_gene[g]
+        hg38_trs_by_gv = hg38_tx_per_genev_by_gene[g]
+        for gv, trs in hg19_trs_by_gv.items():
+            for t in trs:
+                hg19.write(t + '\n')
+        for gv, trs in hg38_trs_by_gv.items():
+            for t in trs:
+                hg38.write(t + '\n')
 
 not_matching_tr_count = 0
 mult_hg19_tx_count = 0
 mult_hg38_tx_count = 0
-with open(canon_tx_hg19_fpath, 'w') as hg19, open(canon_tx_hg38_fpath, 'w') as hg38:
+cancer_tx_hg19_fpath = join(base_dir, 'cancer_transcripts_hg19_ensembl.txt')
+cancer_tx_hg38_fpath = join(base_dir, 'cancer_transcripts_hg38_ensembl.txt')
+with open(cancer_tx_hg19_fpath, 'w') as hg19, \
+     open(cancer_tx_hg38_fpath, 'w') as hg38:
     for g in hg38_genes:
         hg19_trs_by_gv = hg19_tx_per_genev_by_gene[g]
         hg38_trs_by_gv = hg38_tx_per_genev_by_gene[g]
