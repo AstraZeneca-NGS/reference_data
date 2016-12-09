@@ -100,10 +100,10 @@ with open(canon_tx_hg19_fpath, 'w') as hg19, \
         hg38_trs_by_gv = hg38_tx_per_genev_by_gene[g]
         for gv, trs in hg19_trs_by_gv.items():
             for t in trs:
-                hg19.write(t + '\n')
+                hg19.write(g + '\t' + t + '\n')
         for gv, trs in hg38_trs_by_gv.items():
             for t in trs:
-                hg38.write(t + '\n')
+                hg38.write(g + '\t' + t + '\n')
 
 not_matching_tr_count = 0
 mult_hg19_tx_count = 0
