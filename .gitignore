@@ -93,3 +93,5 @@ ENV/
 .idea
 
 transcripts/snpeff_verbose_output
+
+bed_annotation/ensembl/*/gtf
