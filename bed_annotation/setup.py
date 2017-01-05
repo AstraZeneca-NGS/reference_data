@@ -57,7 +57,7 @@ setup(
         'pybedtools',
     ],
     setup_requires=[
-        'numpy'
+        'numpy',
     ],
     classifiers=[
         'Environment :: Console',
@@ -73,6 +73,4 @@ setup(
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
     ],
-    test_suite='nose.collector',
-    tests_require=['nose'],
 )

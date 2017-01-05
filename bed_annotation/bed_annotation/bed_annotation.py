@@ -193,8 +193,6 @@ def _format_field(value):
 
 
 def tx_priority_sort_key(x):
-    canon_tx_key = 0 if x[eu.BedCols.ENSEMBL_ID] in canon_tx_by_gname else 1
-
     biotype_key = 1
     biotype_rank = ['protein_coding', '__default__', 'rna', 'decay', 'sense_', 'antisense', 'translated_', 'transcribed_']
     for key in biotype_rank:
@@ -209,10 +207,14 @@ def tx_priority_sort_key(x):
                        for key in [eu.BedCols.TX_OVERLAP_PERCENTAGE,
                                    eu.BedCols.CDS_OVERLAPS_PERCENTAGE,
                                    eu.BedCols.EXON_OVERLAPS_PERCENTAGE]]
-
+    
+    is_canon = x[eu.BedCols.ENSEMBL_ID] == canon_tx_by_gname.get(x[eu.BedCols.HUGO]) or \
+               x[eu.BedCols.ENSEMBL_ID] == canon_tx_by_gname.get(x[eu.BedCols.GENE])
+    canon_tx_key = 0 if is_canon else 1
+    
     length_key = -(int(x[eu.BedCols.END]) - int(x[eu.BedCols.START]))
 
-    return canon_tx_key, biotype_key, tsl_key, hugo_key, overlap_key, length_key
+    return biotype_key, tsl_key, hugo_key, overlap_key, canon_tx_key, length_key
 
 
 # def select_best_tx(overlaps_by_tx):
