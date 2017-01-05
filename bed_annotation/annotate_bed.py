@@ -17,6 +17,9 @@ import ensembl.utils as eu
 from bed_annotation.bed_annotation import annotate
 
 
+# TODO: prefer consecutive annotations
+
+
 def main():
     options = [
         (['-o', '--output-file'], dict(
@@ -69,11 +72,17 @@ def main():
             default=False,
             help='Annotate with only high confidence regions (TSL is 1 or NA, with HUGO symbol, total overlap size > 50%)',
         )),
+        (['--report-all-good-annotations'], dict(
+            dest='report_all_good_annotations',
+            action='store_true',
+            default=False,
+            help='Report all good overlaps with reliable transcripts for a single region',
+        )),
         (['--seq2c'], dict(
             dest='seq2c',
             action='store_true',
             default=False,
-            help='Uses --canonical, and uses only one annotation per gene',  # TODO: prefer consecutive annotations
+            help=SUPPRESS_HELP,  # For back-compability
         )),
         (['--debug'], dict(
             dest='debug',
@@ -95,30 +104,31 @@ def main():
     for args, kwargs in options:
         parser.add_option(*args, **kwargs)
     opts, args = parser.parse_args()
-    logger.is_debug = opts.debug
+    logger.init(opts.debug)
 
     if not opts.genome:
         critical('Error: please, specify genome build name with -g (e.g. `-g hg19`)')
 
-    if opts.short:
-        if opts.extended:        critical('--short and --extended can\'t be set both')
-        if opts.output_features: critical('--short and --output-features can\'t be set both')
-    elif opts.output_features or opts.extended:
-        opts.extended = True
-        opts.short = False
-    if opts.seq2c:
-        opts.only_canonical = True  #opts.cds_only = True
+    output_features             = opts.output_features
+    cds_only                    = opts.cds_only
+    collapse_exons              = opts.collapse_exons
+    extended                    = opts.extended
+    short                       = opts.short
+    high_confidence             = opts.high_confidence
+    only_canonical              = opts.only_canonical
+    report_all_good_annotations = opts.report_all_good_annotations
+    if short:
+        if extended:        critical('--short and --extended can\'t be set both')
+        if output_features: critical('--short and --output-features can\'t be set both')
+    elif output_features or extended:
+        extended = True
+        short = False
 
     if len(args) < 1:
         parser.exit('Usage: ' + __file__ + ' Input_BED_file -g hg19 -o Annotated_BED_file [--canonical]')
     input_bed_fpath = verify_file(args[0], is_critical=True, description='Input BED file for ' + __file__)
     output_fpath = adjust_path(opts.output_file)
 
-    # prev_output_fpath = None
-    # if opts.debug:
-    #     if isfile(output_fpath):
-    #         prev_output_fpath = output_fpath + '_' + datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    #         os.rename(output_fpath, prev_output_fpath)
     if opts.work_dir:
         work_dir = join(adjust_path(opts.work_dir), os.path.splitext(basename(input_bed_fpath))[0])
         safe_mkdir(work_dir)
@@ -131,18 +141,16 @@ def main():
     input_bed_fpath = verify_bed(input_bed_fpath, is_critical=True, description='Input BED file for ' + __file__)
 
     output_fpath = annotate(
-        input_bed_fpath, output_fpath, work_dir, genome=opts.genome, is_debug=opts.debug,
-        only_canonical=opts.only_canonical, short=opts.short, extended=opts.extended,
-        high_confidence=opts.high_confidence, collapse_exons=opts.collapse_exons,
-        output_features=opts.output_features, cds_only=opts.cds_only, for_seq2c=opts.seq2c)
+        input_bed_fpath, output_fpath, work_dir, genome=opts.genome,
+        only_canonical=only_canonical, short=short, extended=extended,
+        high_confidence=high_confidence, collapse_exons=collapse_exons,
+        output_features=output_features, cds_only=cds_only,
+        report_all_good_annotations=report_all_good_annotations)
 
     if not opts.work_dir:
         debug('Removing work directory ' + work_dir)
         shutil.rmtree(work_dir)
 
-    # if opts.debug:
-    #     if prev_output_fpath:
-    #         os.system('diff ' + prev_output_fpath + ' ' + output_fpath)
     info('Done, saved to ' + output_fpath)
 
 
