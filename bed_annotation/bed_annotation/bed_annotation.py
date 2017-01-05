@@ -10,7 +10,7 @@ from ngs_utils.logger import debug
 from ngs_utils.utils import OrderedDefaultDict
 from ngs_utils.bed_utils import verify_bed, SortableByChrom, count_bed_cols, sort_bed, clean_bed
 from ngs_utils.file_utils import file_transaction, adjust_path, safe_mkdir, verify_file
-from ngs_utils.logger import critical, info
+from ngs_utils.logger import critical, info, is_debug
 
 import ensembl.utils as eu
 
@@ -41,25 +41,21 @@ def get_sort_key(chr_order):
     )
 
 
-def overlap_with_features(input_bed_fpath, output_fpath, work_dir, genome=None, is_debug=False,
-             only_canonical=False, extended=False, high_confidence=False, collapse_exons=True,
-             reannotate=False, cds_only=False, for_seq2c=False):
-    return annotate(input_bed_fpath, output_fpath, work_dir, genome=genome, is_debug=is_debug,
-             only_canonical=only_canonical, extended=extended, high_confidence=high_confidence,
-             collapse_exons=collapse_exons, short=False, output_features=True, reannotate=reannotate,
-             cds_only=cds_only, for_seq2c=for_seq2c)
+def overlap_with_features(input_bed_fpath, output_fpath, work_dir, genome=None, **kwargs):
+    return annotate(input_bed_fpath, output_fpath, work_dir, genome=genome, **kwargs)
 
 
-canon_tx_ids, cancer_tx_ids = set(), set()
+canon_tx_by_gname = dict()
 
 
-def annotate(input_bed_fpath, output_fpath, work_dir, genome=None, is_debug=False,
-             only_canonical=False, extended=False, high_confidence=False, collapse_exons=True,
-             short=False, output_features=False, reannotate=True, cds_only=False, for_seq2c=False):
+def annotate(input_bed_fpath, output_fpath, work_dir, genome=None,
+             reannotate=True, high_confidence=False, only_canonical=False, cds_only=False,
+             short=False, extended=False, **kwargs):
     debug('Getting features from storage')
     features_bed = eu.get_all_features(genome)
     if features_bed is None:
         critical('Genome ' + genome + ' is not supported. Supported: ' + ', '.join(eu.SUPPORTED_GENOMES))
+    debug('Annotation Ensembl BED file: ' + features_bed.fn)
 
     if genome:
         fai_fpath = reference_data.get_fai(genome)
@@ -82,8 +78,8 @@ def annotate(input_bed_fpath, output_fpath, work_dir, genome=None, is_debug=Fals
                 bed = BedTool(input_bed_fpath).cut([0, 1, 2, 3])
             keep_gene_column = True
 
-    global canon_tx_ids, cancer_tx_ids
-    canon_tx_ids, cancer_tx_ids = eu.get_canonical_transcripts_ids(genome)
+    global canon_tx_by_gname
+    canon_tx_by_gname = eu.get_canonical_transcripts_ids(genome)
 
     # features_bed = features_bed.saveas()
     # cols = features_bed.field_count()
@@ -92,7 +88,7 @@ def annotate(input_bed_fpath, output_fpath, work_dir, genome=None, is_debug=Fals
     if high_confidence:
         features_bed = features_bed.filter(eu.high_confidence_filter)
     if only_canonical:
-        features_bed = features_bed.filter(eu.get_only_canonical_filter(canon_tx_ids, cancer_tx_ids))
+        features_bed = features_bed.filter(eu.get_only_canonical_filter(canon_tx_by_gname))
     if cds_only:
         features_bed = features_bed.filter(eu.protein_coding_filter)
     # unique_tx_by_gene = find_best_tx_by_gene(features_bed)
@@ -107,8 +103,7 @@ def annotate(input_bed_fpath, output_fpath, work_dir, genome=None, is_debug=Fals
         bed = bed.saveas(join(work_dir, 'bed.bed'))
         features_bed = features_bed.saveas(join(work_dir, 'features.bed'))
     annotated = _annotate(bed, features_bed, chr_order, fai_fpath, work_dir,
-        high_confidence=high_confidence, collapse_exons=collapse_exons, for_seq2c=for_seq2c,
-        output_features=output_features, is_debug=is_debug, keep_gene_column=keep_gene_column)
+                          high_confidence=False, keep_gene_column=keep_gene_column, **kwargs)
 
     header = [eu.BedCols.names[i] for i in eu.BedCols.cols]
 
@@ -126,7 +121,7 @@ def annotate(input_bed_fpath, output_fpath, work_dir, genome=None, is_debug=Fals
                           ': part of region overlapping with exons\n')
                 out.write('## ' + eu.BedCols.names[eu.BedCols.CDS_OVERLAPS_PERCENTAGE] +
                           ': part of region overlapping with protein coding regions\n')
-            out.write('\t'.join(header) + '\n')
+                out.write('\t'.join(header) + '\n')
             for fields in annotated:
                 if short:
                     fields = fields[:4]
@@ -198,9 +193,7 @@ def _format_field(value):
 
 
 def tx_priority_sort_key(x):
-    cancer_tx_key = 0 if x[eu.BedCols.ENSEMBL_ID] in cancer_tx_ids else 1
-
-    canon_tx_key = 0 if x[eu.BedCols.ENSEMBL_ID] in canon_tx_ids else 1
+    canon_tx_key = 0 if x[eu.BedCols.ENSEMBL_ID] in canon_tx_by_gname else 1
 
     biotype_key = 1
     biotype_rank = ['protein_coding', '__default__', 'rna', 'decay', 'sense_', 'antisense', 'translated_', 'transcribed_']
@@ -219,7 +212,7 @@ def tx_priority_sort_key(x):
 
     length_key = -(int(x[eu.BedCols.END]) - int(x[eu.BedCols.START]))
 
-    return cancer_tx_key, canon_tx_key, biotype_key, tsl_key, hugo_key, overlap_key, length_key
+    return canon_tx_key, biotype_key, tsl_key, hugo_key, overlap_key, length_key
 
 
 # def select_best_tx(overlaps_by_tx):
@@ -236,7 +229,7 @@ def tx_priority_sort_key(x):
 
 
 def _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chrom_order,
-         collapse_exons=True, output_features=False, for_seq2c=False):
+         collapse_exons=True, output_features=False, report_all_good_annotations=False):
     # sort transcripts by "quality" and then select which tx id to report in case of several overlaps
     # (will be useful further when interating exons)
     # annotated_by_tx_by_gene_by_loc = OrderedDict([
@@ -257,6 +250,7 @@ def _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chrom_order,
                 consensus[3] = gname
             consensus[eu.BedCols.FEATURE] = 'capture'
             # consensus[eu.BedCols.EXON_OVERLAPS_BASES] = 0
+            consensus[eu.BedCols.TX_OVERLAP_PERCENTAGE] = 0
             consensus[eu.BedCols.EXON_OVERLAPS_PERCENTAGE] = 0
             consensus[eu.BedCols.CDS_OVERLAPS_PERCENTAGE] = 0
             consensus[eu.BedCols.EXON] = set()
@@ -330,8 +324,7 @@ def _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chrom_order,
             # annotated.append(consensus)
             annotation_alternatives.append(consensus)
 
-        # TODO: sort annotation_alternatives by score, select best
-        if annotation_alternatives and for_seq2c:
+        if not report_all_good_annotations and annotation_alternatives:  # unless asked for all, selecting the top best annotation
             annotation_alternatives.sort(key=tx_priority_sort_key)
             # annotation_alternatives = [a for a in annotation_alternatives if a[eu.BedCols.CDS_OVERLAPS_PERCENTAGE] > 50]
             best_alt = annotation_alternatives[0]
@@ -346,8 +339,7 @@ def _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chrom_order,
 
 
 def _annotate(bed, ref_bed, chr_order, fai_fpath, work_dir,
-              high_confidence=False, collapse_exons=True, output_features=False,
-              is_debug=False, keep_gene_column=False, for_seq2c=False):
+              high_confidence=False, keep_gene_column=False, **kwargs):
     # if genome:
         # genome_fpath = cut(fai_fpath, 2, output_fpath=intermediate_fname(work_dir, fai_fpath, 'cut2'))
         # intersection = bed.intersect(ref_bed, sorted=True, wao=True, g='<(cut -f1,2 ' + fai_fpath + ')')
@@ -430,8 +422,7 @@ def _annotate(bed, ref_bed, chr_order, fai_fpath, work_dir,
     info('  Total unique annotated regions: ' + str(total_uniq_annotated))
     info('  Total off target regions: ' + str(total_off_target))
     info('Resolving ambiguities...')
-    annotated = _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chr_order,
-        collapse_exons, output_features, for_seq2c)
+    annotated = _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chr_order, **kwargs)
 
     return annotated
 
