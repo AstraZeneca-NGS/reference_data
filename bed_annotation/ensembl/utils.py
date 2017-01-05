@@ -106,11 +106,12 @@ def get_canonical_transcripts_ids(genome):
     replacement_fpath = verify_file(replacement_fpath, is_critical=True, description='Canonical cancer transcripts replacement path')
 
     with open(canon_fpath) as f:
-        canon_transcripts = set(l.strip('\n').split('.')[0] for l in f)
+        canon_tx_by_gname = dict(l.strip('\n').split('\t') for l in f)
     with open(replacement_fpath) as f:
-        cancer_transcripts = set(l.strip('\n').split('\t')[1] for l in f)
+        for gname, tx_id in (l.strip('\n').split('\t') for l in f):
+            canon_tx_by_gname[gname] = tx_id
 
-    return canon_transcripts, cancer_transcripts
+    return canon_tx_by_gname
 
 
 def _get(relative_path, genome=None):
@@ -159,8 +160,9 @@ def get_hgnc_gene_synonyms():
 def high_confidence_filter(x):
     return x[BedCols.TSL] in ['1', '2', 'NA', '.', None] and x[BedCols.HUGO] not in ['', '.', None]
 
-def get_only_canonical_filter(canon_tx_ids, cancer_tx_ids):
-    return lambda x: x[BedCols.ENSEMBL_ID] in canon_tx_ids or x[BedCols.ENSEMBL_ID] in cancer_tx_ids
+def get_only_canonical_filter(canon_tx_by_gname):
+    return lambda x: x[BedCols.ENSEMBL_ID] == canon_tx_by_gname.get(x[BedCols.HUGO]) or \
+                     x[BedCols.ENSEMBL_ID] == canon_tx_by_gname.get(x[BedCols.GENE])
 
 def protein_coding_filter(x):
     return x[BedCols.BIOTYPE] == 'protein_coding'

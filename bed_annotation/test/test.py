@@ -21,18 +21,17 @@ def run(args, fname, suf):
     print ''
 
     if prev_output_fpath:
-        os.system('diff ' + prev_output_fpath + ' ' + output_fpath)
+        os.system('diff ' + prev_output_fpath + ' ' + output_fpath + ' > ' + output_fpath + '.diff')
 
 
 BED_FNAME = 'test.bed'  # small.bed
 
 
-run('-g hg38',                                            BED_FNAME, 'default')
-run('-g hg38 --extended',                                 BED_FNAME, 'extended')
-run('-g hg38 --extended --output-features',               BED_FNAME, 'extended_plus_features')
-run('-g hg38 --extended --output-features --canonical',   BED_FNAME, 'extended_plus_features_canonical')
-run('-g hg38 --short',                                    BED_FNAME, 'short')
-run('-g hg38 --seq2c',                                    BED_FNAME, 'seq2c')
+run('-g hg19',                              BED_FNAME, 'default')
+run('-g hg19 --extended',                   BED_FNAME, 'extended')
+run('-g hg19 --extended --output-features', BED_FNAME, 'extended_plus_features')
+run('-g hg19 --extended --canonical',       BED_FNAME, 'extended_canonical')
+run('-g hg19 --short',                      BED_FNAME, 'short')
 
 
 # TODO:
