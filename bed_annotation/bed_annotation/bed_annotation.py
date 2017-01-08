@@ -12,7 +12,7 @@ from ngs_utils.bed_utils import verify_bed, SortableByChrom, count_bed_cols, sor
 from ngs_utils.file_utils import file_transaction, adjust_path, safe_mkdir, verify_file
 from ngs_utils.logger import critical, info, is_debug
 
-import ensembl.utils as eu
+import ensembl as ebl
 
 
 def bed_chrom_order(bed_fpath):
@@ -32,12 +32,12 @@ def bed_chrom_order(bed_fpath):
 
 def get_sort_key(chr_order):
     return lambda fs: (
-        chr_order[fs[eu.BedCols.CHROM]],
-        int(fs[eu.BedCols.START]),
-        int(fs[eu.BedCols.END]),
-        0 if fs[eu.BedCols.FEATURE] == 'transcript' else 1,
-        fs[eu.BedCols.ENSEMBL_ID],
-        fs[eu.BedCols.GENE]
+        chr_order[fs[ebl.BedCols.CHROM]],
+        int(fs[ebl.BedCols.START]),
+        int(fs[ebl.BedCols.END]),
+        0 if fs[ebl.BedCols.FEATURE] == 'transcript' else 1,
+        fs[ebl.BedCols.ENSEMBL_ID],
+        fs[ebl.BedCols.GENE]
     )
 
 
@@ -52,9 +52,9 @@ def annotate(input_bed_fpath, output_fpath, work_dir, genome=None,
              reannotate=True, high_confidence=False, only_canonical=False, cds_only=False,
              short=False, extended=False, **kwargs):
     debug('Getting features from storage')
-    features_bed = eu.get_all_features(genome)
+    features_bed = ebl.get_all_features(genome)
     if features_bed is None:
-        critical('Genome ' + genome + ' is not supported. Supported: ' + ', '.join(eu.SUPPORTED_GENOMES))
+        critical('Genome ' + genome + ' is not supported. Supported: ' + ', '.join(ebl.SUPPORTED_GENOMES))
     debug('Annotation Ensembl BED file: ' + features_bed.fn)
 
     if genome:
@@ -79,24 +79,24 @@ def annotate(input_bed_fpath, output_fpath, work_dir, genome=None,
             keep_gene_column = True
 
     global canon_tx_by_gname
-    canon_tx_by_gname = eu.get_canonical_transcripts_ids(genome)
+    canon_tx_by_gname = ebl.get_canonical_transcripts_ids(genome)
 
     # features_bed = features_bed.saveas()
     # cols = features_bed.field_count()
     # if cols < 12:
     #     features_bed = features_bed.each(lambda f: f + ['.']*(12-cols))
     if high_confidence:
-        features_bed = features_bed.filter(eu.high_confidence_filter)
+        features_bed = features_bed.filter(ebl.high_confidence_filter)
     if only_canonical:
-        features_bed = features_bed.filter(eu.get_only_canonical_filter(canon_tx_by_gname))
+        features_bed = features_bed.filter(ebl.get_only_canonical_filter(canon_tx_by_gname))
     if cds_only:
-        features_bed = features_bed.filter(eu.protein_coding_filter)
+        features_bed = features_bed.filter(ebl.protein_coding_filter)
     # unique_tx_by_gene = find_best_tx_by_gene(features_bed)
 
     info('Extracting features from Ensembl GTF')
     features_bed = features_bed.filter(lambda x:
-        x[eu.BedCols.FEATURE] in ['exon', 'CDS', 'stop_codon', 'transcript'])
-        # x[eu.BedCols.ENSEMBL_ID] == unique_tx_by_gene[x[eu.BedCols.GENE]])
+        x[ebl.BedCols.FEATURE] in ['exon', 'CDS', 'stop_codon', 'transcript'])
+        # x[ebl.BedCols.ENSEMBL_ID] == unique_tx_by_gene[x[ebl.BedCols.GENE]])
 
     info('Overlapping regions with Ensembl data')
     if is_debug:
@@ -105,7 +105,7 @@ def annotate(input_bed_fpath, output_fpath, work_dir, genome=None,
     annotated = _annotate(bed, features_bed, chr_order, fai_fpath, work_dir,
                           high_confidence=False, keep_gene_column=keep_gene_column, **kwargs)
 
-    header = [eu.BedCols.names[i] for i in eu.BedCols.cols]
+    header = [ebl.BedCols.names[i] for i in ebl.BedCols.cols]
 
     info('Saving annotated regions...')
     with file_transaction(work_dir, output_fpath) as tx:
@@ -115,11 +115,11 @@ def annotate(input_bed_fpath, output_fpath, work_dir, genome=None,
             if not extended:
                 header = header[:6]
             if extended:
-                out.write('## ' + eu.BedCols.names[eu.BedCols.TX_OVERLAP_PERCENTAGE] +
+                out.write('## ' + ebl.BedCols.names[ebl.BedCols.TX_OVERLAP_PERCENTAGE] +
                           ': part of region overlapping with transcripts\n')
-                out.write('## ' + eu.BedCols.names[eu.BedCols.EXON_OVERLAPS_PERCENTAGE] +
+                out.write('## ' + ebl.BedCols.names[ebl.BedCols.EXON_OVERLAPS_PERCENTAGE] +
                           ': part of region overlapping with exons\n')
-                out.write('## ' + eu.BedCols.names[eu.BedCols.CDS_OVERLAPS_PERCENTAGE] +
+                out.write('## ' + ebl.BedCols.names[ebl.BedCols.CDS_OVERLAPS_PERCENTAGE] +
                           ': part of region overlapping with protein coding regions\n')
                 out.write('\t'.join(header) + '\n')
             for fields in annotated:
@@ -174,21 +174,21 @@ def _format_field(value):
 
 
 # def find_best_tx_by_gene(features_bed):
-#     all_transcripts = features_bed.filter(lambda x: x[eu.BedCols.FEATURE] in ['transcript'])
+#     all_transcripts = features_bed.filter(lambda x: x[ebl.BedCols.FEATURE] in ['transcript'])
 #
 #     tx_by_gene = defaultdict(list)
 #     for tx_region in all_transcripts:
 #         tx_by_gene[tx_region.name].append(tx_region)
 #     unique_tx_by_gene = dict()
 #     for g, txs in tx_by_gene.iteritems():
-#         tsl1_txs = [tx for tx in txs if tx[eu.BedCols.TSL] in ['1', 'NA']]
+#         tsl1_txs = [tx for tx in txs if tx[ebl.BedCols.TSL] in ['1', 'NA']]
 #         if tsl1_txs:
 #             txs = tsl1_txs[:]
-#         hugo_txs = [tx for tx in txs if tx[eu.BedCols.HUGO]]
+#         hugo_txs = [tx for tx in txs if tx[ebl.BedCols.HUGO]]
 #         if hugo_txs:
 #             txs = hugo_txs[:]
-#         best_tx = max(txs, key=lambda tx_: int(tx_[eu.BedCols.END]) - int(tx_[eu.BedCols.START]))
-#         unique_tx_by_gene[g] = best_tx[eu.BedCols.ENSEMBL_ID]
+#         best_tx = max(txs, key=lambda tx_: int(tx_[ebl.BedCols.END]) - int(tx_[ebl.BedCols.START]))
+#         unique_tx_by_gene[g] = best_tx[ebl.BedCols.ENSEMBL_ID]
 #     return unique_tx_by_gene
 
 
@@ -196,37 +196,37 @@ def tx_priority_sort_key(x):
     biotype_key = 1
     biotype_rank = ['protein_coding', '__default__', 'rna', 'decay', 'sense_', 'antisense', 'translated_', 'transcribed_']
     for key in biotype_rank:
-        if key in x[eu.BedCols.BIOTYPE].lower():
+        if key in x[ebl.BedCols.BIOTYPE].lower():
             biotype_key = biotype_rank.index(key)
-    tsl_key = {'1': 0, '2': 2, '3': 3, '4': 4, '5': 5}.get(x[eu.BedCols.TSL], 1)
-    hugo_key = 0 if x[eu.BedCols.HUGO] not in ['.', '', None] else 1
+    tsl_key = {'1': 0, '2': 2, '3': 3, '4': 4, '5': 5}.get(x[ebl.BedCols.TSL], 1)
+    hugo_key = 0 if x[ebl.BedCols.HUGO] not in ['.', '', None] else 1
 
     overlap_key = 0
-    if len(x) > eu.BedCols.TX_OVERLAP_PERCENTAGE:
+    if len(x) > ebl.BedCols.TX_OVERLAP_PERCENTAGE:
         overlap_key = [(-x[key] if x[key] is not None else 0)
-                       for key in [eu.BedCols.TX_OVERLAP_PERCENTAGE,
-                                   eu.BedCols.CDS_OVERLAPS_PERCENTAGE,
-                                   eu.BedCols.EXON_OVERLAPS_PERCENTAGE]]
+                       for key in [ebl.BedCols.TX_OVERLAP_PERCENTAGE,
+                                   ebl.BedCols.CDS_OVERLAPS_PERCENTAGE,
+                                   ebl.BedCols.EXON_OVERLAPS_PERCENTAGE]]
     
-    is_canon = x[eu.BedCols.ENSEMBL_ID] == canon_tx_by_gname.get(x[eu.BedCols.HUGO]) or \
-               x[eu.BedCols.ENSEMBL_ID] == canon_tx_by_gname.get(x[eu.BedCols.GENE])
+    is_canon = x[ebl.BedCols.ENSEMBL_ID] == canon_tx_by_gname.get(x[ebl.BedCols.HUGO]) or \
+               x[ebl.BedCols.ENSEMBL_ID] == canon_tx_by_gname.get(x[ebl.BedCols.GENE])
     canon_tx_key = 0 if is_canon else 1
     
-    length_key = -(int(x[eu.BedCols.END]) - int(x[eu.BedCols.START]))
+    length_key = -(int(x[ebl.BedCols.END]) - int(x[ebl.BedCols.START]))
 
     return biotype_key, tsl_key, hugo_key, overlap_key, canon_tx_key, length_key
 
 
 # def select_best_tx(overlaps_by_tx):
-#     tx_overlaps = [(o, size) for os in overlaps_by_tx.values() for (o, size) in os if o[eu.BedCols.FEATURE] == 'transcript']
-#     tsl1_overlaps = [(o, size) for (o, size) in tx_overlaps if o[eu.BedCols.TSL] in ['1', 'NA']]
+#     tx_overlaps = [(o, size) for os in overlaps_by_tx.values() for (o, size) in os if o[ebl.BedCols.FEATURE] == 'transcript']
+#     tsl1_overlaps = [(o, size) for (o, size) in tx_overlaps if o[ebl.BedCols.TSL] in ['1', 'NA']]
 #     if tsl1_overlaps:
 #         tx_overlaps = tsl1_overlaps
-#     hugo_overlaps = [(o, size) for (o, size) in tx_overlaps if o[eu.BedCols.HUGO]]
+#     hugo_overlaps = [(o, size) for (o, size) in tx_overlaps if o[ebl.BedCols.HUGO]]
 #     if hugo_overlaps:
 #         tx_overlaps = hugo_overlaps
-#     (best_overlap, size) = max(sorted(tx_overlaps, key=lambda (o, size): int(o[eu.BedCols.END]) - int(o[eu.BedCols.START])))
-#     tx_id = best_overlap[eu.BedCols.ENSEMBL_ID]
+#     (best_overlap, size) = max(sorted(tx_overlaps, key=lambda (o, size): int(o[ebl.BedCols.END]) - int(o[ebl.BedCols.START])))
+#     tx_id = best_overlap[ebl.BedCols.ENSEMBL_ID]
 #     return tx_id
 
 
@@ -246,16 +246,16 @@ def _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chrom_order,
         features = dict()
         annotation_alternatives = []
         for gname, overlaps_by_tx in overlaps_by_tx_by_gene.iteritems():
-            consensus = [None for _ in eu.BedCols.cols]
+            consensus = [None for _ in ebl.BedCols.cols]
             consensus[:3] = chrom, start, end
             if gname:
                 consensus[3] = gname
-            consensus[eu.BedCols.FEATURE] = 'capture'
-            # consensus[eu.BedCols.EXON_OVERLAPS_BASES] = 0
-            consensus[eu.BedCols.TX_OVERLAP_PERCENTAGE] = 0
-            consensus[eu.BedCols.EXON_OVERLAPS_PERCENTAGE] = 0
-            consensus[eu.BedCols.CDS_OVERLAPS_PERCENTAGE] = 0
-            consensus[eu.BedCols.EXON] = set()
+            consensus[ebl.BedCols.FEATURE] = 'capture'
+            # consensus[ebl.BedCols.EXON_OVERLAPS_BASES] = 0
+            consensus[ebl.BedCols.TX_OVERLAP_PERCENTAGE] = 0
+            consensus[ebl.BedCols.EXON_OVERLAPS_PERCENTAGE] = 0
+            consensus[ebl.BedCols.CDS_OVERLAPS_PERCENTAGE] = 0
+            consensus[ebl.BedCols.EXON] = set()
 
             if not overlaps_by_tx:  # not annotated or already annotated but gene did not match the intersection
                 annotated.append(consensus)
@@ -264,13 +264,13 @@ def _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chrom_order,
             all_tx = []
             for xx in overlaps_by_tx.itervalues():
                 for x, overlap_bp in xx:
-                    if x[eu.BedCols.FEATURE] == 'transcript':
-                        x[eu.BedCols.TX_OVERLAP_PERCENTAGE] = 100.0 * overlap_bp / (int(end) - int(start))
+                    if x[ebl.BedCols.FEATURE] == 'transcript':
+                        x[ebl.BedCols.TX_OVERLAP_PERCENTAGE] = 100.0 * overlap_bp / (int(end) - int(start))
                         all_tx.append(x)
             # all_tx = (x for xx in overlaps_by_tx.itervalues() for x, overlap_bp in xx
-            #           if x[eu.BedCols.FEATURE] == 'transcript')
+            #           if x[ebl.BedCols.FEATURE] == 'transcript')
 
-            tx_sorted_list = [x[eu.BedCols.ENSEMBL_ID] for x in sorted(all_tx, key=tx_priority_sort_key)]
+            tx_sorted_list = [x[ebl.BedCols.ENSEMBL_ID] for x in sorted(all_tx, key=tx_priority_sort_key)]
             if not tx_sorted_list:
                 annotated.append(consensus)
                 continue
@@ -295,40 +295,40 @@ def _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chrom_order,
                     f_end = int(fields[2])
                     feature = features.get((f_start, f_end))
                     if feature is None:
-                        feature = [None for _ in eu.BedCols.cols]
+                        feature = [None for _ in ebl.BedCols.cols]
                         feature[:len(fields)] = fields
-                        # feature[eu.BedCols.TX_OVERLAP_BASES] = 0
-                        # feature[eu.BedCols.TX_OVERLAP_PERCENTAGE] = 0
+                        # feature[ebl.BedCols.TX_OVERLAP_BASES] = 0
+                        # feature[ebl.BedCols.TX_OVERLAP_PERCENTAGE] = 0
                         features[(f_start, f_end)] = feature
-                    # feature[eu.BedCols.TX_OVERLAP_BASES] += c_overlap_bp
-                    # feature[eu.BedCols.TX_OVERLAP_PERCENTAGE] += 100.0 * c_overlap_bp / (int(f_end) - int(f_start))
+                    # feature[ebl.BedCols.TX_OVERLAP_BASES] += c_overlap_bp
+                    # feature[ebl.BedCols.TX_OVERLAP_PERCENTAGE] += 100.0 * c_overlap_bp / (int(f_end) - int(f_start))
                     # TODO: don't forget to merge BED if not
 
-                if fields[eu.BedCols.FEATURE] == 'transcript':
-                    consensus[eu.BedCols.GENE] = gname
-                    consensus[eu.BedCols.STRAND] = fields[eu.BedCols.STRAND]
-                    consensus[eu.BedCols.BIOTYPE] = fields[eu.BedCols.BIOTYPE]
-                    consensus[eu.BedCols.ENSEMBL_ID] = fields[eu.BedCols.ENSEMBL_ID]
-                    consensus[eu.BedCols.TSL] = fields[eu.BedCols.TSL]
-                    consensus[eu.BedCols.HUGO] = fields[eu.BedCols.HUGO]
-                    # consensus[eu.BedCols.TX_OVERLAP_BASES] = c_overlap_bp
-                    consensus[eu.BedCols.TX_OVERLAP_PERCENTAGE] = c_overlap_pct
+                if fields[ebl.BedCols.FEATURE] == 'transcript':
+                    consensus[ebl.BedCols.GENE] = gname
+                    consensus[ebl.BedCols.STRAND] = fields[ebl.BedCols.STRAND]
+                    consensus[ebl.BedCols.BIOTYPE] = fields[ebl.BedCols.BIOTYPE]
+                    consensus[ebl.BedCols.ENSEMBL_ID] = fields[ebl.BedCols.ENSEMBL_ID]
+                    consensus[ebl.BedCols.TSL] = fields[ebl.BedCols.TSL]
+                    consensus[ebl.BedCols.HUGO] = fields[ebl.BedCols.HUGO]
+                    # consensus[ebl.BedCols.TX_OVERLAP_BASES] = c_overlap_bp
+                    consensus[ebl.BedCols.TX_OVERLAP_PERCENTAGE] = c_overlap_pct
 
-                elif fields[eu.BedCols.FEATURE] == 'exon':
-                    consensus[eu.BedCols.EXON_OVERLAPS_PERCENTAGE] += c_overlap_pct
-                    consensus[eu.BedCols.EXON].add(int(fields[eu.BedCols.EXON]))
+                elif fields[ebl.BedCols.FEATURE] == 'exon':
+                    consensus[ebl.BedCols.EXON_OVERLAPS_PERCENTAGE] += c_overlap_pct
+                    consensus[ebl.BedCols.EXON].add(int(fields[ebl.BedCols.EXON]))
 
-                elif fields[eu.BedCols.FEATURE] == 'CDS':
-                    consensus[eu.BedCols.CDS_OVERLAPS_PERCENTAGE] += c_overlap_pct
+                elif fields[ebl.BedCols.FEATURE] == 'CDS':
+                    consensus[ebl.BedCols.CDS_OVERLAPS_PERCENTAGE] += c_overlap_pct
 
-            consensus[eu.BedCols.EXON] = sorted(list(consensus[eu.BedCols.EXON]))
+            consensus[ebl.BedCols.EXON] = sorted(list(consensus[ebl.BedCols.EXON]))
 
             # annotated.append(consensus)
             annotation_alternatives.append(consensus)
 
         if not report_all_good_annotations and annotation_alternatives:  # unless asked for all, selecting the top best annotation
             annotation_alternatives.sort(key=tx_priority_sort_key)
-            # annotation_alternatives = [a for a in annotation_alternatives if a[eu.BedCols.CDS_OVERLAPS_PERCENTAGE] > 50]
+            # annotation_alternatives = [a for a in annotation_alternatives if a[ebl.BedCols.CDS_OVERLAPS_PERCENTAGE] > 50]
             best_alt = annotation_alternatives[0]
             annotation_alternatives = [a for a in annotation_alternatives if tx_priority_sort_key(a) == tx_priority_sort_key(best_alt)]
 
@@ -377,14 +377,14 @@ def _annotate(bed, ref_bed, chr_order, fai_fpath, work_dir,
 
     for intersection_fields in intersection_bed:
         inters_list = list(intersection_fields)
-        if len(inters_list) < 3 + len(eu.BedCols.cols) - 3 + 1:
+        if len(inters_list) < 3 + len(ebl.BedCols.cols) - 3 + 1:
             critical('Cannot parse the reference BED file - unexpected number of lines '
                      '(' + str(len(inters_list)) + ') in ' + str(inters_list) +
-                     ' (less than ' + str(3 + len(eu.BedCols.cols) - 2 + 1) + ')')
+                     ' (less than ' + str(3 + len(ebl.BedCols.cols) - 2 + 1) + ')')
 
         a_chr, a_start, a_end = intersection_fields[:3]
 
-        overlap_fields = [None for _ in eu.BedCols.cols]
+        overlap_fields = [None for _ in ebl.BedCols.cols]
 
         if keep_gene_column:
             a_gene = intersection_fields[3]
@@ -397,7 +397,7 @@ def _annotate(bed, ref_bed, chr_order, fai_fpath, work_dir,
         overlap_size = int(intersection_fields[-1])
         assert e_chr == '.' or a_chr == e_chr, str((a_chr + ', ' + e_chr))
 
-        # fs = [None for _ in eu.BedCols.cols]
+        # fs = [None for _ in ebl.BedCols.cols]
         # fs[:3] = [a_chr, a_start, a_end]
         reg = (a_chr, int(a_start), int(a_end))
 
@@ -413,11 +413,11 @@ def _annotate(bed, ref_bed, chr_order, fai_fpath, work_dir,
                 total_uniq_annotated += 1
                 met.add((a_chr, a_start, a_end))
 
-            e_gene = overlap_fields[eu.BedCols.GENE] if not high_confidence else overlap_fields[eu.BedCols.HUGO]
+            e_gene = overlap_fields[ebl.BedCols.GENE] if not high_confidence else overlap_fields[ebl.BedCols.HUGO]
             if keep_gene_column and e_gene != a_gene:
                 overlaps_by_tx_by_gene_by_loc[reg][a_gene] = OrderedDefaultDict(list)
             else:
-                tx = overlap_fields[eu.BedCols.ENSEMBL_ID]
+                tx = overlap_fields[ebl.BedCols.ENSEMBL_ID]
                 overlaps_by_tx_by_gene_by_loc[reg][e_gene][tx].append((overlap_fields, overlap_size))
 
     info('  Total annotated regions: ' + str(total_annotated))

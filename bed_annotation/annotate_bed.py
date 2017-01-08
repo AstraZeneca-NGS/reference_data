@@ -13,7 +13,7 @@ from ngs_utils.file_utils import file_transaction, adjust_path, safe_mkdir, veri
 from ngs_utils.logger import critical, info
 from ngs_utils import logger
 
-import ensembl.utils as eu
+import ensembl as ebl
 from bed_annotation.bed_annotation import annotate
 
 
@@ -40,7 +40,7 @@ def main():
         )),
         (['-g', '--genome'], dict(
             dest='genome',
-            help='Genome build. Accepted values: ' + ', '.join(eu.SUPPORTED_GENOMES),
+            help='Genome build. Accepted values: ' + ', '.join(ebl.SUPPORTED_GENOMES),
         )),
         (['--canonical'], dict(
             dest='only_canonical',
