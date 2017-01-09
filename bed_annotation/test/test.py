@@ -27,11 +27,14 @@ def run(args, fname, suf):
 BED_FNAME = 'test.bed'  # small.bed
 
 
-run('-g hg19',                              BED_FNAME, 'default')
-run('-g hg19 --extended',                   BED_FNAME, 'extended')
-run('-g hg19 --extended --output-features', BED_FNAME, 'extended_plus_features')
-run('-g hg19 --extended --canonical',       BED_FNAME, 'extended_canonical')
-run('-g hg19 --short',                      BED_FNAME, 'short')
+run('-g hg19',                                      BED_FNAME, 'default')
+run('-g hg19 --extended',                           BED_FNAME, 'extended')
+run('-g hg19 --extended --output-features',         BED_FNAME, 'extended_plus_features')
+run('-g hg19 --extended --canonical',               BED_FNAME, 'extended_canonical')
+run('-g hg19 --extended --ambiguities best_one',    BED_FNAME, 'extended_canonical_bestone')
+run('-g hg19 --extended --ambiguities best_all',    BED_FNAME, 'extended_canonical_bestall')
+run('-g hg19 --extended --ambiguities all',         BED_FNAME, 'extended_canonical_all')
+run('-g hg19 --short',                              BED_FNAME, 'short')
 
 
 # TODO:

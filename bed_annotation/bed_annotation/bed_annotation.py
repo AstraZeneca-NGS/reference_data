@@ -193,28 +193,35 @@ def _format_field(value):
 
 
 def tx_priority_sort_key(x):
-    biotype_key = 1
-    biotype_rank = ['protein_coding', '__default__', 'rna', 'decay', 'sense_', 'antisense', 'translated_', 'transcribed_']
-    for key in biotype_rank:
-        if key in x[ebl.BedCols.BIOTYPE].lower():
-            biotype_key = biotype_rank.index(key)
+    # overlaps_cds_key = 0
+    # ind = x[ebl.BedCols.CDS_OVERLAPS_PERCENTAGE]
+    # if len(x) > ind and x[ind] and x[ind] > 0:
+    #     overlaps_cds_key = 1
+
+    overlap_key = tuple([(-x[ind] if len(x) > ind and x[ind] is not None else 0)
+       for ind in [ebl.BedCols.TX_OVERLAP_PERCENTAGE,
+                   ebl.BedCols.CDS_OVERLAPS_PERCENTAGE,
+                   ebl.BedCols.EXON_OVERLAPS_PERCENTAGE]])
+    
+    biotype_rank = ['protein_coding', 'rna', 'decay', 'sense_', 'antisense', '__default__', 'translated_', 'transcribed_']
+    biotype = '__default__'
+    for bt in biotype_rank:
+        if bt in x[ebl.BedCols.BIOTYPE].lower():
+            biotype = bt
+            break
+    biotype_key = biotype_rank.index(biotype)
+
     tsl_key = {'1': 0, '2': 2, '3': 3, '4': 4, '5': 5}.get(x[ebl.BedCols.TSL], 1)
+
     hugo_key = 0 if x[ebl.BedCols.HUGO] not in ['.', '', None] else 1
 
-    overlap_key = 0
-    if len(x) > ebl.BedCols.TX_OVERLAP_PERCENTAGE:
-        overlap_key = [(-x[key] if x[key] is not None else 0)
-                       for key in [ebl.BedCols.TX_OVERLAP_PERCENTAGE,
-                                   ebl.BedCols.CDS_OVERLAPS_PERCENTAGE,
-                                   ebl.BedCols.EXON_OVERLAPS_PERCENTAGE]]
-    
     is_canon = x[ebl.BedCols.ENSEMBL_ID] == canon_tx_by_gname.get(x[ebl.BedCols.HUGO]) or \
                x[ebl.BedCols.ENSEMBL_ID] == canon_tx_by_gname.get(x[ebl.BedCols.GENE])
     canon_tx_key = 0 if is_canon else 1
     
     length_key = -(int(x[ebl.BedCols.END]) - int(x[ebl.BedCols.START]))
 
-    return biotype_key, tsl_key, hugo_key, overlap_key, canon_tx_key, length_key
+    return overlap_key, biotype_key, tsl_key, hugo_key, canon_tx_key, length_key
 
 
 # def select_best_tx(overlaps_by_tx):
@@ -231,7 +238,7 @@ def tx_priority_sort_key(x):
 
 
 def _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chrom_order,
-         collapse_exons=True, output_features=False, report_all_good_annotations=False):
+         collapse_exons=True, output_features=False, ambiguities_method=False):
     # sort transcripts by "quality" and then select which tx id to report in case of several overlaps
     # (will be useful further when interating exons)
     # annotated_by_tx_by_gene_by_loc = OrderedDict([
@@ -262,13 +269,19 @@ def _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chrom_order,
                 continue
 
             all_tx = []
-            for xx in overlaps_by_tx.itervalues():
+            for xx in overlaps_by_tx.values():
                 for x, overlap_bp in xx:
                     if x[ebl.BedCols.FEATURE] == 'transcript':
                         x[ebl.BedCols.TX_OVERLAP_PERCENTAGE] = 100.0 * overlap_bp / (int(end) - int(start))
                         all_tx.append(x)
-            # all_tx = (x for xx in overlaps_by_tx.itervalues() for x, overlap_bp in xx
-            #           if x[ebl.BedCols.FEATURE] == 'transcript')
+
+            # if not all_tx:
+            #     annotated.append(consensus)
+            #     continue
+            # tx_by_key = {tx_priority_sort_key(tx): tx for tx in all_tx}
+            # overlaps = []
+            # for x in tx_by_key.values():
+            #     overlaps.extend(overlaps_by_tx[x[ebl.BedCols.ENSEMBL_ID]])
 
             tx_sorted_list = [x[ebl.BedCols.ENSEMBL_ID] for x in sorted(all_tx, key=tx_priority_sort_key)]
             if not tx_sorted_list:
@@ -276,16 +289,7 @@ def _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chrom_order,
                 continue
             tx_id = tx_sorted_list[0]
             overlaps = overlaps_by_tx[tx_id]
-
-            # # sort transcripts by "quality" and then select which tx id to report in case of several overlaps
-            # # (will be useful further when interating exons)
-            # annotated_by_tx_by_gene_by_loc = OrderedDict([
-            #     (loc, OrderedDict([
-            #         (gname, sorted(annotated_by_tx.itervalues(), key=tx_sort_key))
-            #             for gname, annotated_by_tx in annotated_by_tx_by_gene.iteritems()
-            #     ])) for loc, annotated_by_tx_by_gene in annotated_by_tx_by_gene_by_loc.iteritems()
-            # ])
-
+            
             for fields, overlap_size in overlaps:
                 c_overlap_bp = overlap_size
                 c_overlap_pct = 100.0 * c_overlap_bp / (int(end) - int(start))
@@ -326,12 +330,22 @@ def _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chrom_order,
             # annotated.append(consensus)
             annotation_alternatives.append(consensus)
 
-        if not report_all_good_annotations and annotation_alternatives:  # unless asked for all, selecting the top best annotation
+        if len(annotation_alternatives) > 1:  # unless asked for all, selecting the top best annotation
             annotation_alternatives.sort(key=tx_priority_sort_key)
             # annotation_alternatives = [a for a in annotation_alternatives if a[ebl.BedCols.CDS_OVERLAPS_PERCENTAGE] > 50]
-            best_alt = annotation_alternatives[0]
-            annotation_alternatives = [a for a in annotation_alternatives if tx_priority_sort_key(a) == tx_priority_sort_key(best_alt)]
-
+            # choices=['best_one', 'best_ask', 'best_all', 'all_ask', 'all'],
+            if 'best_' in ambiguities_method:
+                best_alt = annotation_alternatives[0]
+                if ambiguities_method == 'best_one':
+                    annotation_alternatives = [best_alt]
+                else:
+                    annotation_alternatives = [a for a in annotation_alternatives if tx_priority_sort_key(a) == tx_priority_sort_key(best_alt)]
+            if len(annotation_alternatives) > 1 and ambiguities_method in '_ask':
+                choice_indices = raw_input('Please choose alternative (sorted by confidence):\n' +
+                    ''.join([str(i) + ': ' + '\t'.join(str(f) for f in a) + '\n' for i, a in enumerate(annotation_alternatives)]))
+                choice_indices = choice_indices.split(',')
+                annotation_alternatives = [annotation_alternatives[int(i)] for i in choice_indices]
+                
         annotated.extend(annotation_alternatives)
 
         features = sorted(features.values(), key=get_sort_key(chrom_order))

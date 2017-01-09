@@ -60,7 +60,7 @@ def main():
             default=False,
             help='Use only CDS to annotate',
         )),
-        (['--extended'], dict(
+        (['-e', '--extended'], dict(
             dest='extended',
             action='store_true',
             default=False,
@@ -72,11 +72,11 @@ def main():
             default=False,
             help='Annotate with only high confidence regions (TSL is 1 or NA, with HUGO symbol, total overlap size > 50%)',
         )),
-        (['--report-all-good-annotations'], dict(
-            dest='report_all_good_annotations',
-            action='store_true',
-            default=False,
-            help='Report all good overlaps with reliable transcripts for a single region',
+        (['-a', '--ambiguities'], dict(
+            dest='ambiguities',
+            choices=['best_one', 'best_ask', 'best_all', 'all_ask', 'all'],
+            default='best_all',
+            help='How to resolve ambuguios overlaps with reliable transcripts for a single region',
         )),
         (['--seq2c'], dict(
             dest='seq2c',
@@ -84,7 +84,7 @@ def main():
             default=False,
             help=SUPPRESS_HELP,  # For back-compability
         )),
-        (['--debug'], dict(
+        (['-d', '--debug'], dict(
             dest='debug',
             action='store_true',
             default=False,
@@ -116,7 +116,7 @@ def main():
     short                       = opts.short
     high_confidence             = opts.high_confidence
     only_canonical              = opts.only_canonical
-    report_all_good_annotations = opts.report_all_good_annotations
+    ambiguities_method          = opts.ambiguities
     if short:
         if extended:        critical('--short and --extended can\'t be set both')
         if output_features: critical('--short and --output-features can\'t be set both')
@@ -145,7 +145,7 @@ def main():
         only_canonical=only_canonical, short=short, extended=extended,
         high_confidence=high_confidence, collapse_exons=collapse_exons,
         output_features=output_features, cds_only=cds_only,
-        report_all_good_annotations=report_all_good_annotations)
+        ambiguities_method=ambiguities_method)
 
     if not opts.work_dir:
         debug('Removing work directory ' + work_dir)
