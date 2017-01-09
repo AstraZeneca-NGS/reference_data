@@ -78,10 +78,61 @@ def get_merged_cds(genome):
 def ensembl_gtf_fpath(genome):
     return _get_ensembl_file(join('gtf', 'ref-transcripts.gtf'), genome.split('-')[0])  # no -alt
 
-def biomart_fpath():
-    """ Downloaded from http://www.ensembl.org/biomart/martview/691cdd7b3ea5b7dc64f442ba4ef4a402
+def biomart_fpath(genome='hg38'):
+    """ bm_fpath downloaded from http://www.ensembl.org/biomart
+
+        ---------------------------------------------------------
+        hg38:
+        - go to http://grch37.ensembl.org/biomart
+        - select "Ensembl Gene"
+        - select "Human genes (GRCh37.p13)"
+        - click "Attributes":
+          - GENE:
+            - Transcript ID
+            - Transcript Support Level (TSL)
+            - Associated Gene Name
+            - % GC content
+            - Gene type
+            - Transcript type
+          - EXTERNAL:
+            - HGNC symbol
+            - RefSeq mRNA
+            - RefSeq ncRNA
+
+        link: http://www.ensembl.org/biomart/martview/1a58c2026b9aafb613b19630264d4a54?VIRTUALSCHEMANAME=default
+        &ATTRIBUTES=hsapiens_gene_ensembl.default.feature_page.ensembl_transcript_id|hsapiens_gene_ensembl.default
+        .feature_page.gene_biotype|hsapiens_gene_ensembl.default.feature_page.transcript_biotype
+        |hsapiens_gene_ensembl.default.feature_page.transcript_tsl|hsapiens_gene_ensembl.default.feature_page
+        .percentage_gc_content|hsapiens_gene_ensembl.default.feature_page.hgnc_symbol|hsapiens_gene_ensembl.default
+        .feature_page.refseq_mrna|hsapiens_gene_ensembl.default.feature_page.refseq_ncrna|hsapiens_gene_ensembl
+        .default.feature_page.external_gene_name&FILTERS=&VISIBLEPANEL=attributepanel
+        
+        ---------------------------------------------------------
+        hg19:
+        - go to http://www.ensembl.org/biomart
+        - select "Ensembl Genes 87"
+        - select "Human genes (GRCh38.p7)"
+        - click "Attributes":
+          - GENE:
+            - Transcript ID
+            - Associated Gene Name
+            - % GC content
+            - Gene type
+            - Transcript type
+          - EXTERNAL:
+            - HGNC symbol
+            - RefSeq mRNA
+            - RefSeq ncRNA
+
+        link: http://grch37.ensembl.org/biomart/martview/2b820216c72bef00db4384dfc0e874fd?VIRTUALSCHEMANAME=default
+        &ATTRIBUTES=hsapiens_gene_ensembl.default.feature_page.ensembl_transcript_id|hsapiens_gene_ensembl.default
+        .feature_page.external_gene_name|hsapiens_gene_ensembl.default.feature_page.percentage_gc_content
+        |hsapiens_gene_ensembl.default.feature_page.gene_biotype|hsapiens_gene_ensembl.default.feature_page
+        .transcript_biotype|hsapiens_gene_ensembl.default.feature_page.refseq_mrna|hsapiens_gene_ensembl.default
+        .feature_page.refseq_ncrna|hsapiens_gene_ensembl.default.feature_page.hgnc_symbol&FILTERS=&VISIBLEPANEL
+        =attributepanel
     """
-    return _get_ensembl_file('mart_export.txt')
+    return _get_ensembl_file('mart_export.txt', genome)
 
 def _get_ensembl_file(fname, genome=None):
     if genome:

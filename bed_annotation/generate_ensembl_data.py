@@ -45,13 +45,7 @@ Usage:
     db = gtf.get_gtf_db(gtf_fpath)
 
     debug('Reading biomart data')
-    features_by_ens_id = dict()
-    bm_fpath = ebl.biomart_fpath()
-    if not verify_file(bm_fpath):
-        critical('Biomart file not found, and needed for TSL values')
-    with open(bm_fpath) as f:
-        for r in csv.DictReader(f, delimiter='\t'):
-            features_by_ens_id[r['Transcript ID']] = r
+    features_by_ens_id = read_biomart(genome_name)
 
     chroms = [c for c, l in ref.get_chrom_lengths(genome_name)]
     
@@ -91,7 +85,7 @@ Usage:
 
             bm_gname = biomart_rec['Associated Gene Name']
             bm_tx_biotype = biomart_rec['Transcript type']
-            bm_tsl = biomart_rec['Transcript Support Level (TSL)']
+            bm_tsl = biomart_rec.get('Transcript Support Level (TSL)')
             hugo_gene = biomart_rec['HGNC symbol']
 
             if bm_gname != gname:
@@ -149,6 +143,28 @@ Usage:
 
 
     # db_bed = gtf.gtf_to_bed(gtf_db_fpath, out_dir)
+
+
+def read_biomart(genome_name):
+    features_by_ens_id = dict()
+    bm_fpath = ebl.biomart_fpath(genome_name)
+    if not verify_file(bm_fpath): critical('Biomart file not found, and needed for TSL values')
+    with open(bm_fpath) as f:
+        for r in csv.DictReader(f, delimiter='\t'):
+            features_by_ens_id[r['Transcript ID']] = r
+    
+    # hg38 version has TSL, checking if we can populate some TSL from it
+    if not genome_name.startswith('hg38'):
+        bm_fpath = ebl.biomart_fpath('hg38')
+        if not verify_file(bm_fpath): critical('Biomart for hg38 file not found, and needed for TSL values')
+        with open(bm_fpath) as f:
+            for r in csv.DictReader(f, delimiter='\t'):
+                if r['Transcript ID'] not in features_by_ens_id:
+                    features_by_ens_id[r['Transcript ID']] = r
+                else:
+                    features_by_ens_id[r['Transcript ID']]['Transcript Support Level (TSL)'] = r[
+                        'Transcript Support Level (TSL)']
+    return features_by_ens_id
 
 
 if __name__ == '__main__':

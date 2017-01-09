@@ -7,8 +7,6 @@ from ngs_utils.logger import debug, critical
 import bed_annotation.ensembl as ebl
 
 
-""" bm_fpath downloaded from http://www.ensembl.org/biomart/martview/691cdd7b3ea5b7dc64f442ba4ef4a402
-"""
 bm_fpath = ebl.biomart_fpath()
 if not bm_fpath:
     critical('Error: biomart file is not found')
