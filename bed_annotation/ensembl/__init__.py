@@ -213,7 +213,8 @@ def get_hgnc_gene_synonyms():
 def high_confidence_filter(x):
     return x[BedCols.TSL] in ['1', '2', 'NA', '.', None] and x[BedCols.HUGO] not in ['', '.', None]
 
-def get_only_canonical_filter(canon_tx_by_gname):
+def get_only_canonical_filter(genome):
+    canon_tx_by_gname = get_canonical_transcripts_ids(genome)
     return lambda x: x[BedCols.ENSEMBL_ID] == canon_tx_by_gname.get(x[BedCols.HUGO]) or \
                      x[BedCols.ENSEMBL_ID] == canon_tx_by_gname.get(x[BedCols.GENE])
 

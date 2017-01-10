@@ -78,9 +78,6 @@ def annotate(input_bed_fpath, output_fpath, work_dir, genome=None,
                 bed = BedTool(input_bed_fpath).cut([0, 1, 2, 3])
             keep_gene_column = True
 
-    global canon_tx_by_gname
-    canon_tx_by_gname = ebl.get_canonical_transcripts_ids(genome)
-
     # features_bed = features_bed.saveas()
     # cols = features_bed.field_count()
     # if cols < 12:
@@ -88,7 +85,7 @@ def annotate(input_bed_fpath, output_fpath, work_dir, genome=None,
     if high_confidence:
         features_bed = features_bed.filter(ebl.high_confidence_filter)
     if only_canonical:
-        features_bed = features_bed.filter(ebl.get_only_canonical_filter(canon_tx_by_gname))
+        features_bed = features_bed.filter(ebl.get_only_canonical_filter(genome))
     if cds_only:
         features_bed = features_bed.filter(ebl.protein_coding_filter)
     # unique_tx_by_gene = find_best_tx_by_gene(features_bed)

@@ -125,7 +125,7 @@ def main():
         short = False
 
     if len(args) < 1:
-        parser.exit('Usage: ' + __file__ + ' Input_BED_file -g hg19 -o Annotated_BED_file [--canonical]')
+        parser.exit('Usage: ' + __file__ + ' Input_BED_file -g hg19 -o Annotated_BED_file [options]')
     input_bed_fpath = verify_file(args[0], is_critical=True, description='Input BED file for ' + __file__)
     output_fpath = adjust_path(opts.output_file)
 
