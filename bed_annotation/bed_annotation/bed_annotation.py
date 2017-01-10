@@ -166,11 +166,11 @@ class Region(SortableByChrom):
 
 def _format_field(value):
     if isinstance(value, list) or isinstance(value, set):
-        return ', '.join(_format_field(v) for v in value) or '.'
+        return ', '.join(_format_field(v) for v in value)
     elif isinstance(value, float):
         return '{:.1f}'.format(value)
     else:
-        return str(value or '.')
+        return str(value) if value is not None else '.'
 
 
 # def find_best_tx_by_gene(features_bed):
