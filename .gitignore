@@ -95,3 +95,6 @@ ENV/
 transcripts/snpeff_verbose_output
 
 bed_annotation/ensembl/*/gtf
+ann.sh
+lift.sh
+ann
