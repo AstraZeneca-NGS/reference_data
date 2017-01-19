@@ -94,7 +94,7 @@ chr1    367658  368597  OR4F29  1       +       capture protein_coding  ENST0000
 Regions may overlap mltiple genes. The `--ambiguities` controls how the script resolves such ambiguities
 - `--ambiguities all` -- report all reliable overlaps (in order in the "priority" section, see above)
 - `--ambiguities all_ask` -- stop execution and ask user which annotation to pick
-- `--ambiguities best_all` -- find the best overlap, and if there are several equally good, report all (in terms of the "priority" above)
+- `--ambiguities best_all` (default) -- find the best overlap, and if there are several equally good, report all (in terms of the "priority" above)
 - `--ambiguities best_ask` -- find the best overlap, and if there are several equally good, ask user
 - `--ambiguities best_one` -- find the best overlap, and if there are several equally good, report any of them
 
