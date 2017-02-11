@@ -3,8 +3,8 @@
 import os
 from collections import defaultdict, OrderedDict
 from os.path import isfile, join, basename
+from pybedtools import BedTool
 
-from ngs_utils.bedtools import BedTool
 from ngs_utils import reference_data
 from ngs_utils.logger import debug
 from ngs_utils.utils import OrderedDefaultDict

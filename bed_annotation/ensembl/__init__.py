@@ -1,8 +1,8 @@
 import sys
 import os
 from os.path import dirname, join, abspath, isfile, pardir
+from pybedtools import BedTool
 
-from ngs_utils.bedtools import BedTool
 from ngs_utils.bed_utils import bedtools_version
 from ngs_utils.file_utils import which, open_gzipsafe, verify_file
 from ngs_utils.logger import debug, critical
