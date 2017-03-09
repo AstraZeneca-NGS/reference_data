@@ -114,8 +114,6 @@ Usage:
             fs[ebl.BedCols.TSL] = tsl or '.'
             fs[ebl.BedCols.HUGO] = hugo_gene or '.'
             # fs[ebl.BedCols.names[ensembl.BedCols.GC]] = gc
-            if len(fs) == 12:
-                print fs
             out.write('\t'.join(fs) + '\n')
 
     if num_tx_not_in_biomart:

@@ -55,7 +55,6 @@ def annotate(input_bed_fpath, output_fpath, work_dir, genome=None,
     features_bed = ebl.get_all_features(genome)
     if features_bed is None:
         critical('Genome ' + genome + ' is not supported. Supported: ' + ', '.join(ebl.SUPPORTED_GENOMES))
-    debug('Annotation Ensembl BED file: ' + str(features_bed))
 
     if genome:
         fai_fpath = reference_data.get_fai(genome)
