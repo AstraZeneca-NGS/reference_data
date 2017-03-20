@@ -54,10 +54,25 @@ def check_genome(genome):
 #################
 ### INTERFACE ###
 #################
-def get_all_features(genome, high_confidence=False):
+def get_all_features(genome, high_confidence=False, features=None, gene_names=None, only_canonical=False):
+    _canon_filt = get_only_canonical_filter(genome) if only_canonical else None
+    
     bed = _get_ensembl_file('ensembl.bed', genome)
-    if high_confidence:
-        bed = bed.filter(lambda x: x[BedCols.HUGO] not in ['', '.', None])
+    def _filter(x):
+        if high_confidence:
+            if x[BedCols.HUGO] in ['', '.', None]:
+                return False
+        if features:
+            if x[BedCols.FEATURE] not in features:
+                return False
+        if gene_names:
+            if x[BedCols.GENE] not in gene_names:
+                return False
+        if _canon_filt:
+            if not _canon_filt(x):
+                return False
+        return True
+    bed = bed.filter(_filter)
     return bed
 
 def get_merged_cds(genome):
