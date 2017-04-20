@@ -1,7 +1,11 @@
 #!/usr/bin/env python
+import tempfile
+from contextlib import contextmanager
 
 import os
 from collections import defaultdict, OrderedDict
+
+import pybedtools
 from os.path import isfile, join, basename
 from pybedtools import BedTool
 
@@ -9,7 +13,7 @@ from ngs_utils import reference_data
 from ngs_utils.logger import debug
 from ngs_utils.utils import OrderedDefaultDict
 from ngs_utils.bed_utils import verify_bed, SortableByChrom, count_bed_cols, sort_bed, clean_bed
-from ngs_utils.file_utils import file_transaction, adjust_path, safe_mkdir, verify_file
+from ngs_utils.file_utils import file_transaction, adjust_path, safe_mkdir, verify_file, tx_tmpdir
 from ngs_utils.logger import critical, info, is_debug
 
 import ensembl as ebl
@@ -68,6 +72,7 @@ def annotate(input_bed_fpath, output_fpath, work_dir, genome=None,
     bed = BedTool(input_bed_fpath)
     col_num = bed.field_count()
     keep_gene_column = False
+    pybedtools.set_tempdir(safe_mkdir(join(work_dir, 'bedtools')))
     if col_num > 3:
         if reannotate:
             bed = BedTool(input_bed_fpath).cut([0, 1, 2])
@@ -350,6 +355,18 @@ def _resolve_ambiguities(overlaps_by_tx_by_gene_by_loc, chrom_order,
     return annotated
 
 
+@contextmanager
+def bedtools_tmpdir(work_dir):
+    with tx_tmpdir(work_dir) as tmpdir:
+        orig_tmpdir = tempfile.gettempdir()
+        pybedtools.set_tempdir(tmpdir)
+        yield
+        if orig_tmpdir and os.path.exists(orig_tmpdir):
+            pybedtools.set_tempdir(orig_tmpdir)
+        else:
+            tempfile.tempdir = None
+
+
 def _annotate(bed, ref_bed, chr_order, fai_fpath, work_dir,
               high_confidence=False, keep_gene_column=False, **kwargs):
     # if genome:
@@ -360,6 +377,8 @@ def _annotate(bed, ref_bed, chr_order, fai_fpath, work_dir,
 
     intersection_bed = None
     intersection_fpath = None
+
+    pybedtools.set_tempdir(safe_mkdir(join(work_dir, 'bedtools')))
     if is_debug:
         intersection_fpath = join(work_dir, 'intersection.bed')
         if isfile(intersection_fpath):
