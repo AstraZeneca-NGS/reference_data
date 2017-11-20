@@ -119,48 +119,48 @@ with open(cancer_tx_hg19_fpath, 'w') as hg19, \
         if g in REPLACEMENTS:
             repl_t = REPLACEMENTS[g]
 
-            print g + ' in replacement list as ' + repl_t
+            print(g + ' in replacement list as ' + repl_t)
 
-            print '  hg19: replacing all gene versions: ' + ', '.join(hg19_trs_by_gv.keys())
+            print('  hg19: replacing all gene versions: ' + ', '.join(hg19_trs_by_gv.keys()))
             for gv, trs in hg19_trs_by_gv.items():
-                print '     replacing gene version ' + gv + ': ' + ', '.join(trs) + ' -> ' + repl_t
+                print('     replacing gene version ' + gv + ': ' + ', '.join(trs) + ' -> ' + repl_t)
                 hg19_trs_by_gv[gv] = [repl_t]
 
-            print '  hg38:'
+            print('  hg38:')
             for gv, trs in hg38_trs_by_gv.items():
-                print '     replacing gene version ' + gv + ': ' + ', '.join(trs) + ' -> ' + repl_t
+                print('     replacing gene version ' + gv + ': ' + ', '.join(trs) + ' -> ' + repl_t)
                 hg38_trs_by_gv[gv] = [repl_t]
                 is_met = False
                 for t in trs:
                     if eq_tx(t, repl_t):
-                        print '    ' + t + ' eq to ' + repl_t
+                        print('    ' + t + ' eq to ' + repl_t)
                         is_met = True
                 if not is_met:
-                    print '  not met in ' + ', '.join(trs)
+                    print('  not met in ' + ', '.join(trs))
 
         if not set(hg19_trs_by_gv) == set(hg38_trs_by_gv):
-            # print 'Transcripts do not match:\n  hg19: ' + ', '.join(hg19_trs_by_gene[g]) + '\n  hg38: ' + ', '.join(hg38_trs_by_gene[g])
+            # print('Transcripts do not match:\n  hg19: ' + ', '.join(hg19_trs_by_gene[g]) + '\n  hg38: ' + ', '.join(hg38_trs_by_gene[g]))
             not_matching_tr_count += 1
 
         for gv, trs in hg19_trs_by_gv.items():
             if len(trs) > 1:
-                # print 'Multiple hg19 tx for ' + g + ': ' + ', '.join(hg38_trs_by_gene[g])
+                # print('Multiple hg19 tx for ' + g + ': ' + ', '.join(hg38_trs_by_gene[g]))
                 mult_hg19_tx_count += 1
             for t in trs:
                 hg19.write(t + '\n')
 
         for gv, trs in hg38_trs_by_gv.items():
             if len(trs) > 1:
-                # print 'Multiple hg38 tx for ' + g + ': ' + ', '.join(hg38_trs_by_gene[g])
+                # print('Multiple hg38 tx for ' + g + ': ' + ', '.join(hg38_trs_by_gene[g]))
                 mult_hg38_tx_count += 1
             for t in trs:
                 hg38.write(t + '\n')
 
-print '---'
-print 'total genes:', len(hg38_genes)
-print 'not_matching_tr_count:', not_matching_tr_count
-print 'mult_hg38_tx_count:', mult_hg38_tx_count
-print 'mult_hg19_tx_count:', mult_hg19_tx_count
+print('---')
+print('total genes:', len(hg38_genes))
+print('not_matching_tr_count:', not_matching_tr_count)
+print('mult_hg38_tx_count:', mult_hg38_tx_count)
+print('mult_hg19_tx_count:', mult_hg19_tx_count)
 
 
 
